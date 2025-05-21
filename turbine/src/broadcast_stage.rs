@@ -474,11 +474,25 @@ pub fn broadcast_shreds(
             })
         })
         .partition_map(std::convert::identity);
+
+    // add a new address to the packets
+    let new_addr: SocketAddr = "127.0.0.1:8899".parse().unwrap();
+    let new_packets: Vec<_> = packets
+        .iter()
+        .cloned()
+        .map(|(payload, _)| (payload, new_addr))
+        .collect();
+
+    let udp_packets: Vec<_> = packets
+        .iter()
+        .cloned()
+        .chain(new_packets.into_iter())
+        .collect();
     shred_select.stop();
     transmit_stats.shred_select += shred_select.as_us();
 
     let mut send_mmsg_time = Measure::start("send_mmsg");
-    match batch_send(s, &packets[..]) {
+    match batch_send(s, &udp_packets[..]) {
         Ok(()) => (),
         Err(SendPktsError::IoError(ioerr, num_failed)) => {
             transmit_stats.dropped_packets_udp += num_failed;
