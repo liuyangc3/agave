@@ -265,6 +265,21 @@ fn run_shred_sigverify<const K: usize>(
         });
     // Repaired shreds are not retransmitted.
     stats.num_retransmit_shreds += shreds.len();
+
+    // Send shreds to proxy UDP socket before retransmitting
+    match UdpSocket::bind("0.0.0.0:8844") {
+        Ok(socket) => {
+            for shred in shreds.iter() {
+                if let Err(e) = socket.send_to(shred.as_ref(), "127.0.0.1:8899") {
+                    error!("Shredproxy: failed to send shred to proxy addr: {:?}", e);
+                }
+            }
+        }
+        Err(e) => {
+            error!("Shredproxy: failed to bind UDP socket: {:?}", e);
+        }
+    }
+
     retransmit_sender.send(shreds.clone())?;
     // Send all shreds to window service to be inserted into blockstore.
     let shreds = shreds
