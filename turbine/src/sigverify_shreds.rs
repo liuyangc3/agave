@@ -25,6 +25,7 @@ use {
     },
     static_assertions::const_assert_eq,
     std::{
+        net::{UdpSocket},
         collections::HashMap,
         num::NonZeroUsize,
         sync::{
