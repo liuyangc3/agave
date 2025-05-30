@@ -25,8 +25,8 @@ use {
     },
     static_assertions::const_assert_eq,
     std::{
-        net::{UdpSocket},
         collections::HashMap,
+        net::UdpSocket,
         num::NonZeroUsize,
         sync::{
             atomic::{AtomicUsize, Ordering},
@@ -267,17 +267,17 @@ fn run_shred_sigverify<const K: usize>(
     // Repaired shreds are not retransmitted.
     stats.num_retransmit_shreds += shreds.len();
 
-    // Send shreds to proxy UDP socket before retransmitting
-    match UdpSocket::bind("0.0.0.0:8844") {
+    // Send shreds to UDP socket before retransmitting
+    match UdpSocket::bind("0.0.0.0:0") {
         Ok(socket) => {
-            for shred in shreds.iter() {
-                if let Err(e) = socket.send_to(shred.as_ref(), "127.0.0.1:8899") {
-                    error!("Shredproxy: failed to send shred to proxy addr: {:?}", e);
+            for shred_payload in shreds.iter() {
+                if let Err(e) = socket.send_to(shred_payload.as_ref(), "127.0.0.1:8899") {
+                    println!("Failed to send shred to UDP: {:?}", e);
                 }
             }
         }
         Err(e) => {
-            error!("Shredproxy: failed to bind UDP socket: {:?}", e);
+            println!("Failed to bind UDP socket: {:?}", e);
         }
     }
 
