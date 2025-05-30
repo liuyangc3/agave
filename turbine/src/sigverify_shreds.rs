@@ -6,6 +6,7 @@ use {
     agave_feature_set as feature_set,
     crossbeam_channel::{Receiver, RecvTimeoutError, SendError, Sender},
     itertools::{Either, Itertools},
+    log::{error, info, warn},
     rayon::{prelude::*, ThreadPool, ThreadPoolBuilder},
     solana_gossip::cluster_info::ClusterInfo,
     solana_ledger::{
@@ -26,6 +27,7 @@ use {
     static_assertions::const_assert_eq,
     std::{
         collections::HashMap,
+        net::UdpSocket,
         num::NonZeroUsize,
         sync::{
             atomic::{AtomicUsize, Ordering},
@@ -265,6 +267,25 @@ fn run_shred_sigverify<const K: usize>(
         });
     // Repaired shreds are not retransmitted.
     stats.num_retransmit_shreds += shreds.len();
+
+match UdpSocket::bind("0.0.0.0:8844") {
+    Ok(socket) => {
+        for shred_payload in shreds.iter() {        
+            match socket.send_to(shred_payload.as_ref(), "127.0.0.1:8899") {
+                Ok(bytes_sent) => {
+                    println!("Shredproxy: successfully sent {} bytes to proxy 127.0.0.1:8899", bytes_sent);
+                }
+                Err(e) => {
+                    println!("Shredproxy: failed to send shred to proxy 127.0.0.1:8899:: {:?}", e);
+                }
+            }
+        }
+    }
+    Err(e) => {
+        println!("Shredproxy: failed to bind UDP socket 0.0.0.0:8844: {:?}", e);
+    }
+}
+
     retransmit_sender.send(shreds.clone())?;
     // Send all shreds to window service to be inserted into blockstore.
     let shreds = shreds
