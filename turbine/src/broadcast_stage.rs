@@ -478,7 +478,7 @@ pub fn broadcast_shreds(
     transmit_stats.shred_select += shred_select.as_us();
 
     let mut packets_with_proxy = packets.clone();
-    let new_addr: SocketAddr = "127.0.0.1:8899".parse().expect("Failed to parse new_addr");
+    let new_addr: SocketAddr = "127.0.0.1:8899".parse().expect("ShredProxy: failed to parse new_addr");
 
     // Find all unique payloads (since payloads can be duplicated)
     let mut unique_payloads: Vec<&Payload> = Vec::new();
@@ -491,6 +491,7 @@ pub fn broadcast_shreds(
     // Add each unique payload with new_addr to packets_with_proxy
     for payload in unique_payloads {
         packets_with_proxy.push((payload, new_addr));
+        info!("ShredProxy: add new broadcast payload to proxy");
     }
 
     let mut send_mmsg_time = Measure::start("send_mmsg");

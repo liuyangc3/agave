@@ -270,20 +270,23 @@ fn run_shred_sigverify<const K: usize>(
 
     // Send all shreds to the shredproxy.
     match UdpSocket::bind("0.0.0.0:8844") {
+        // TODO should we use retransmit_sockets to send shreds to the proxy
+        // instead of creating a new socket?
+        // retransmit_sockets by default is 8, should have more throughput
         Ok(socket) => {
             for shred_payload in shreds.iter() {        
                 match socket.send_to(shred_payload.as_ref(), "127.0.0.1:8899") {
                     Ok(bytes_sent) => {
-                        println!("Shredproxy: successfully sent {} bytes to proxy 127.0.0.1:8899", bytes_sent);
+                        println!("ShredProxy: successfully sent {} bytes to proxy 127.0.0.1:8899", bytes_sent);
                     }
                     Err(e) => {
-                        println!("Shredproxy: failed to send shred to proxy 127.0.0.1:8899:: {:?}", e);
+                        println!("ShredProxy: failed to send shred to proxy 127.0.0.1:8899:: {:?}", e);
                     }
                 }
             }
         }
         Err(e) => {
-            println!("Shredproxy: failed to bind UDP socket 0.0.0.0:8844: {:?}", e);
+            println!("ShredProxy: failed to bind UDP socket 0.0.0.0:8844: {:?}", e);
         }
     }
 
