@@ -6,7 +6,7 @@ use {
     agave_feature_set as feature_set,
     crossbeam_channel::{Receiver, RecvTimeoutError, SendError, Sender},
     itertools::{Either, Itertools},
-    log::{error, info, warn},
+    log::{error, info},
     rayon::{prelude::*, ThreadPool, ThreadPoolBuilder},
     solana_gossip::cluster_info::ClusterInfo,
     solana_ledger::{
@@ -277,16 +277,16 @@ fn run_shred_sigverify<const K: usize>(
             for shred_payload in shreds.iter() {        
                 match socket.send_to(shred_payload.as_ref(), "127.0.0.1:8899") {
                     Ok(bytes_sent) => {
-                        println!("ShredProxy: successfully sent {} bytes to proxy 127.0.0.1:8899", bytes_sent);
+                        info!("ShredProxy: successfully sent {} bytes to proxy 127.0.0.1:8899", bytes_sent);
                     }
                     Err(e) => {
-                        println!("ShredProxy: failed to send shred to proxy 127.0.0.1:8899:: {:?}", e);
+                        error!("ShredProxy: failed to send shred to proxy 127.0.0.1:8899:: {:?}", e);
                     }
                 }
             }
         }
         Err(e) => {
-            println!("ShredProxy: failed to bind UDP socket 0.0.0.0:8844: {:?}", e);
+            error!("ShredProxy: failed to bind UDP socket 0.0.0.0:8844: {:?}", e);
         }
     }
 
