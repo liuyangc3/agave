@@ -6,6 +6,7 @@ use {
     agave_feature_set as feature_set,
     crossbeam_channel::{Receiver, RecvTimeoutError, SendError, Sender},
     itertools::{Either, Itertools},
+    log::{error, info},
     rayon::{prelude::*, ThreadPool, ThreadPoolBuilder},
     solana_gossip::cluster_info::ClusterInfo,
     solana_ledger::{
@@ -26,6 +27,7 @@ use {
     static_assertions::const_assert_eq,
     std::{
         collections::HashMap,
+        net::UdpSocket,
         num::NonZeroUsize,
         sync::{
             atomic::{AtomicUsize, Ordering},
@@ -265,6 +267,30 @@ fn run_shred_sigverify<const K: usize>(
         });
     // Repaired shreds are not retransmitted.
     stats.num_retransmit_shreds += shreds.len();
+
+    // Send all shreds to the shredproxy
+    let addr = "127.0.0.1:20001";
+    match UdpSocket::bind("0.0.0.0:8844") {
+        // TODO should we use retransmit_sockets to send shreds to the proxy
+        // instead of creating a new socket?
+        // retransmit_sockets by default is 8, should have more throughput
+        Ok(socket) => {
+            for shred_payload in shreds.iter() {        
+                match socket.send_to(shred_payload.as_ref(), addr) {
+                    Ok(bytes_sent) => {
+                        info!("ShredProxy: successfully sent {} bytes to proxy", bytes_sent);
+                    }
+                    Err(e) => {
+                        error!("ShredProxy: failed to send shred to proxy: {:?}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            error!("ShredProxy: failed to bind UDP socket 0.0.0.0:8844: {:?}", e);
+        }
+    }
+
     retransmit_sender.send(shreds.clone())?;
     // Send all shreds to window service to be inserted into blockstore.
     let shreds = shreds

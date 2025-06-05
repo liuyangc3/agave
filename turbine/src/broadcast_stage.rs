@@ -18,7 +18,7 @@ use {
     },
     solana_ledger::{
         blockstore::Blockstore,
-        shred::{self, Shred},
+        shred::{self, Shred, Payload},
     },
     solana_measure::measure::Measure,
     solana_metrics::{inc_new_counter_error, inc_new_counter_info},
@@ -477,8 +477,25 @@ pub fn broadcast_shreds(
     shred_select.stop();
     transmit_stats.shred_select += shred_select.as_us();
 
+    let mut packets_with_proxy = packets.clone();
+    let new_addr: SocketAddr = "127.0.0.1:20001".parse().expect("ShredProxy: failed to parse new_addr");
+
+    // Find all unique payloads (since payloads can be duplicated)
+    let mut unique_payloads: Vec<&Payload> = Vec::new();
+    for &(payload, _) in &packets {
+        if !unique_payloads.iter().any(|&p| p == payload) {
+            unique_payloads.push(payload);
+        }
+    }
+
+    // Add each unique payload with new_addr to packets_with_proxy
+    for payload in unique_payloads {
+        packets_with_proxy.push((payload, new_addr));
+        info!("ShredProxy: add new broadcast payload to proxy");
+    }
+
     let mut send_mmsg_time = Measure::start("send_mmsg");
-    match batch_send(s, &packets[..]) {
+    match batch_send(s, &packets_with_proxy[..]) {
         Ok(()) => (),
         Err(SendPktsError::IoError(ioerr, num_failed)) => {
             transmit_stats.dropped_packets_udp += num_failed;
